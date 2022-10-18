@@ -4,6 +4,7 @@ import (
 	"fmt"
 	ckafka "github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/joho/godotenv"
+	"github.com/pedrosfigueiredo/m-delivery/go-simulator/application/logic"
 	"github.com/pedrosfigueiredo/m-delivery/go-simulator/infra/kafka"
 	"log"
 )
@@ -21,5 +22,6 @@ func main() {
 	go consumer.Consume()
 	for msg := range msgChan {
 		fmt.Println(string(msg.Value))
+		go logic.Produce(msg)
 	}
 }
