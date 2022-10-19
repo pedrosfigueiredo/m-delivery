@@ -36,5 +36,5 @@ lerna-debug.log*
 
 # Files that do not need to be versioned
 .docker/dbdata/
-
+.env
 .history
