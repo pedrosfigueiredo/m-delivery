@@ -33,3 +33,8 @@ lerna-debug.log*
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
+
+# Files that do not need to be versioned
+.docker/dbdata/
+
+.history
