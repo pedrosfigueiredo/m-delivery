@@ -22,7 +22,7 @@ type Position struct {
 }
 
 type PartialRoutePosition struct {
-	ID       string    `json:"RouteId"`
+	ID       string    `json:"routeId"`
 	ClientID string    `json:"clientId"`
 	Position []float64 `json:"position"`
 	Finished bool      `json:"finished"`
