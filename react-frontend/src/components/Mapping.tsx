@@ -95,7 +95,6 @@ export const Mapping: FunctionComponent = () => {
     socket.on("new-position", handler);
     return () => {
       socket.off("connect");
-      socket.off("new-position", handler);
     };
   }, [finishRoute, routes, routeIdSelected, socket]);
 
