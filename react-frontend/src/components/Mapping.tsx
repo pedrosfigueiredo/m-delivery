@@ -4,6 +4,7 @@ import { Button, Grid, MenuItem, Select } from "@mui/material";
 import { makeStyles } from "@mui/styles";
 import { Loader } from "google-maps";
 import { sample, shuffle } from "lodash";
+import { useSnackbar } from "notistack";
 import {
   FormEvent,
   FunctionComponent,
@@ -12,9 +13,11 @@ import {
   useRef,
   useState,
 } from "react";
+import { RouteExistsError } from "../errors/route-exists.error";
 import { getCurrentPosition } from "../util/geolocation";
 import { makeCarIcon, makeMarkerIcon, Map } from "../util/map";
 import { Route } from "../util/models";
+import { Navbar } from "./MyNavbar";
 
 const API_URL = process.env.REACT_APP_API_URL;
 const googleMapsLoader = new Loader(process.env.REACT_APP_GOOGLE_API_KEY);
@@ -55,6 +58,7 @@ export const Mapping: FunctionComponent = () => {
   const [routes, setRoutes] = useState<Route[]>([]);
   const [routeIdSelected, setRouteIdSelected] = useState<string>("");
   const mapRef = useRef<Map>();
+  const { enqueueSnackbar } = useSnackbar();
 
   useEffect(() => {
     fetch(`${API_URL}/routes`)
@@ -76,29 +80,50 @@ export const Mapping: FunctionComponent = () => {
     })();
   }, []);
 
+  // const finishRoute = useCallback(
+  //   (route: Route) => {
+  //     enqueueSnackbar(`${route.title} finalizou!`, {
+  //       variant: "success",
+  //     });
+  //     mapRef.current?.removeRoute(route._id);
+  //   },
+  //   [enqueueSnackbar]
+  // );
+
   const startRoute = useCallback(
     (event: FormEvent) => {
       event.preventDefault();
       const route = routes.find((route) => route._id === routeIdSelected);
       const color = sample(shuffle(colors)) as string;
-      mapRef.current?.addRoute(routeIdSelected, {
-        currentMarkerOptions: {
-          position: route?.startPosition,
-          icon: makeCarIcon(color),
-        },
-        endMarkerOptions: {
-          position: route?.endPosition,
-          icon: makeMarkerIcon(color),
-        },
-      });
+      try {
+        mapRef.current?.addRoute(routeIdSelected, {
+          currentMarkerOptions: {
+            position: route?.startPosition,
+            icon: makeCarIcon(color),
+          },
+          endMarkerOptions: {
+            position: route?.endPosition,
+            icon: makeMarkerIcon(color),
+          },
+        });
+      } catch (error) {
+        if (error instanceof RouteExistsError) {
+          enqueueSnackbar(`${route?.title} já adicionado, espere finalizar.`, {
+            variant: "error",
+          });
+          return;
+        }
+        throw error;
+      }
     },
-    [routeIdSelected, routes]
+    [routeIdSelected, routes, enqueueSnackbar]
   );
 
   return (
-    <Grid container style={{ width: "100%", height: "100%" }}>
+    <Grid container className={classes.root}>
       <Grid item xs={12} sm={3}>
-        <form onSubmit={startRoute}>
+        <Navbar />
+        <form onSubmit={startRoute} className={classes.form}>
           <Select
             fullWidth
             displayEmpty
@@ -114,13 +139,15 @@ export const Mapping: FunctionComponent = () => {
               </MenuItem>
             ))}
           </Select>
-          <Button type="submit" color="primary" variant="contained">
-            Iniciar uma corrida
-          </Button>
+          <div className={classes.btnSubmitWrapper}>
+            <Button type="submit" color="primary" variant="contained">
+              Iniciar uma corrida
+            </Button>
+          </div>
         </form>
       </Grid>
       <Grid item xs={12} sm={9}>
-        <div id="map" style={{ width: "100%", height: "100%" }}></div>
+        <div id="map" className={classes.map} />
       </Grid>
     </Grid>
   );
