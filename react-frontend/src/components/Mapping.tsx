@@ -13,13 +13,14 @@ import {
   useRef,
   useState,
 } from "react";
+import { io } from "socket.io-client";
 import { RouteExistsError } from "../errors/route-exists.error";
 import { getCurrentPosition } from "../util/geolocation";
 import { makeCarIcon, makeMarkerIcon, Map } from "../util/map";
 import { Route } from "../util/models";
 import { Navbar } from "./MyNavbar";
 
-const API_URL = process.env.REACT_APP_API_URL;
+const API_URL = process.env.REACT_APP_API_URL as string;
 const googleMapsLoader = new Loader(process.env.REACT_APP_GOOGLE_API_KEY);
 
 const colors = [
@@ -58,7 +59,45 @@ export const Mapping: FunctionComponent = () => {
   const [routes, setRoutes] = useState<Route[]>([]);
   const [routeIdSelected, setRouteIdSelected] = useState<string>("");
   const mapRef = useRef<Map>();
+  const socket = io(API_URL);
   const { enqueueSnackbar } = useSnackbar();
+
+  const finishRoute = useCallback(
+    (route: Route) => {
+      enqueueSnackbar(`${route.title} finalizou!`, {
+        variant: "success",
+      });
+      mapRef.current?.removeRoute(route._id);
+    },
+    [enqueueSnackbar]
+  );
+
+  useEffect(() => {
+    socket.on("connect", () => {
+      console.log("connected");
+    });
+
+    const handler = (data: {
+      routeId: string;
+      position: [number, number];
+      finished: boolean;
+    }) => {
+      console.log(data);
+      mapRef.current?.moveCurrentMarker(data.routeId, {
+        lat: data.position[0],
+        lng: data.position[1],
+      });
+      const route = routes.find((route) => route._id === data.routeId) as Route;
+      if (data.finished) {
+        finishRoute(route);
+      }
+    };
+    socket.on("new-position", handler);
+    return () => {
+      socket.off("connect");
+      socket.off("new-position", handler);
+    };
+  }, [finishRoute, routes, routeIdSelected, socket]);
 
   useEffect(() => {
     fetch(`${API_URL}/routes`)
@@ -80,16 +119,6 @@ export const Mapping: FunctionComponent = () => {
     })();
   }, []);
 
-  // const finishRoute = useCallback(
-  //   (route: Route) => {
-  //     enqueueSnackbar(`${route.title} finalizou!`, {
-  //       variant: "success",
-  //     });
-  //     mapRef.current?.removeRoute(route._id);
-  //   },
-  //   [enqueueSnackbar]
-  // );
-
   const startRoute = useCallback(
     (event: FormEvent) => {
       event.preventDefault();
@@ -106,6 +135,9 @@ export const Mapping: FunctionComponent = () => {
             icon: makeMarkerIcon(color),
           },
         });
+        socket.emit("new-direction", {
+          routeId: routeIdSelected,
+        });
       } catch (error) {
         if (error instanceof RouteExistsError) {
           enqueueSnackbar(`${route?.title} já adicionado, espere finalizar.`, {
@@ -116,7 +148,7 @@ export const Mapping: FunctionComponent = () => {
         throw error;
       }
     },
-    [routeIdSelected, routes, enqueueSnackbar]
+    [routes, routeIdSelected, socket, enqueueSnackbar]
   );
 
   return (
