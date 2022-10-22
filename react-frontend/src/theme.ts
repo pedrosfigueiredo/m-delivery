@@ -3,6 +3,7 @@ import { createTheme } from "@mui/material/styles";
 import { PaletteOptions } from "@mui/material/styles/createPalette";
 
 const palette: PaletteOptions = {
+  mode: "dark",
   primary: {
     main: "#FFCD00",
     contrastText: "#242526",
