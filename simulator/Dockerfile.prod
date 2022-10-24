@@ -1,0 +1,22 @@
+FROM golang:1.16
+
+WORKDIR /go/src
+ENV PATH="/go/bin:${PATH}"
+
+# Kafka Go client is based on the C library librdkafka
+ENV CGO_ENABLED 1
+ENV GOOS linux
+ENV GOARCH amd64
+ENV CC x86_64-linux-gnu-gcc
+# ENV GO111MODULE on
+
+ADD ciscoumbrellaroot.crt /usr/local/share/ca-certificates/ciscoumbrellaroot.crt
+RUN chmod 644 /usr/local/share/ca-certificates/ciscoumbrellaroot.crt && update-ca-certificates
+
+RUN apt-get update && \
+    apt-get install build-essential pkg-config librdkafka-dev \
+    -y --no-install-recommends gcc-x86-64-linux-gnu libc6-dev-amd64-cross
+
+COPY . .
+RUN go build -ldflags="-s -w" -o simulator
+ENTRYPOINT ["./simulator"]
